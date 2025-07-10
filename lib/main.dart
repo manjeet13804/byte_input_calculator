@@ -1,133 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MathResultController extends StateNotifier<String> {
-  MathResultController() : super('');
+final resultProvider = StateProvider<String>((ref) => '');
 
-  void doMath(String op, String val1, String val2) {
-    final a = double.tryParse(val1);
-    final b = double.tryParse(val2);
+void doMath(WidgetRef ref, String operator, String val1, String val2) {
+  final firstNum = double.tryParse(val1);
+  final secondNum = double.tryParse(val2);
 
-    if (a == null || b == null) {
-      state = '⚠️ Enter valid numbers';
-      return;
-    }
-
-    switch (op) {
-      case '+':
-        state = 'Result = ${a + b}';
-        break;
-      case '-':
-        state = 'Result = ${a - b}';
-        break;
-      case '*':
-        state = 'Result = ${a * b}';
-        break;
-      case '/':
-        if (b == 0) {
-          state = '🚫 Can\'t divide by 0';
-        } else {
-          state = 'Result = ${a / b}';
-        }
-        break;
-      default:
-        state = 'Unknown operation';
-    }
+  if (firstNum == null || secondNum == null) {
+    ref.read(resultProvider.notifier).state = 'Please enter valid numbers!';
+    return;
   }
-}
 
-final mathResultProvider = StateNotifierProvider<MathResultController, String>((
-  ref,
-) {
-  return MathResultController();
-});
+  String finalResult;
+
+  if (operator == '+') {
+    finalResult = '${firstNum + secondNum}';
+  } else if (operator == '-') {
+    finalResult = '${firstNum - secondNum}';
+  } else if (operator == '*') {
+    finalResult = '${firstNum * secondNum}';
+  } else if (operator == '/') {
+    if (secondNum == 0) {
+      finalResult = 'Division by zero is not allowed!';
+    } else {
+      finalResult = '${firstNum / secondNum}';
+    }
+  } else {
+    finalResult = 'Unknown operation';
+  }
+
+  ref.read(resultProvider.notifier).state = 'Result: $finalResult';
+}
 
 void main() {
   runApp(const ProviderScope(child: MyCalcApp()));
 }
 
-class MyCalcApp extends StatelessWidget {
+class MyCalcApp extends ConsumerWidget {
   const MyCalcApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Basic Calc',
+      title: 'Basic Math App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.deepPurple),
-      home: CalculatorScreen(),
+      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+      home: const CalculatorPage(),
     );
   }
 }
 
-class CalculatorScreen extends ConsumerWidget {
-  CalculatorScreen({super.key});
-
-  final _inputOne = TextEditingController();
-  final _inputTwo = TextEditingController();
-
-  Widget actionButton(String op, Color tint, WidgetRef ref) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: tint,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-          ),
-          onPressed: () {
-            ref
-                .read(mathResultProvider.notifier)
-                .doMath(op, _inputOne.text, _inputTwo.text);
-          },
-          child: Text(
-            op,
-            style: const TextStyle(fontSize: 22, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
+class CalculatorPage extends ConsumerWidget {
+  const CalculatorPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final output = ref.watch(mathResultProvider);
+    final resultText = ref.watch(resultProvider);
+
+    final firstInput = TextEditingController();
+    final secondInput = TextEditingController();
+
+    Widget buildMathBtn(String symbol, Color bgColor) {
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: () {
+              doMath(ref, symbol, firstInput.text, secondInput.text);
+            },
+            child: Text(
+              symbol,
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Simple Math')),
+      appBar: AppBar(title: const Text('Simple Calculator'), centerTitle: true),
       body: Padding(
-        padding: const EdgeInsets.all(22.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             TextField(
-              controller: _inputOne,
+              controller: firstInput,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'First number'),
             ),
             const SizedBox(height: 10),
             TextField(
-              controller: _inputTwo,
+              controller: secondInput,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Second number'),
             ),
             const SizedBox(height: 20),
             Row(
               children: [
-                actionButton('+', Colors.green, ref),
-                actionButton('-', Colors.blueGrey, ref),
+                buildMathBtn('+', Colors.green),
+                buildMathBtn('-', Colors.blue),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                actionButton('*', Colors.amber.shade700, ref),
-                actionButton('/', Colors.redAccent, ref),
+                buildMathBtn('*', Colors.orange.shade700),
+                buildMathBtn('/', Colors.redAccent),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 30),
             Text(
-              output,
-              style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w600),
+              resultText,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
             ),
           ],
         ),
